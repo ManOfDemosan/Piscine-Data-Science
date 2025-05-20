@@ -1,6 +1,5 @@
 #!/bin/bash
 
-# PostgreSQL 연결 정보
 DB_USER="jaehwkim"
 DB_NAME="piscineds"
 DB_PASSWORD="mysecretpassword"
