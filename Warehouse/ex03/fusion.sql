@@ -1,5 +1,4 @@
--- Step 1: Drop tables if they exist to start fresh
-DROP TABLE IF EXISTS customers_with_items;
+-- Step 1: Drop items table if it exists to start fresh
 DROP TABLE IF EXISTS items;
 
 -- Step 2: Create items table
@@ -19,7 +18,7 @@ CREATE TEMP TABLE temp_items (
 );
 
 -- Load data into temp table
-\copy temp_items FROM '/Users/jaehwankim/Piscine-Data-Science/Warehouse/item.csv' WITH (FORMAT csv, HEADER true, DELIMITER ',')
+\copy temp_items FROM '/csv_data/subject/item/item.csv' WITH (FORMAT csv, HEADER true, DELIMITER ',')
 
 -- Insert distinct records into items table
 INSERT INTO items
@@ -30,27 +29,22 @@ SELECT DISTINCT ON (product_id)
     brand
 FROM temp_items;
 
--- Step 4: Create a new table that joins customers and items
-CREATE TABLE customers_with_items AS
-SELECT 
-    c.event_time,
-    c.event_type,
-    c.product_id,
-    c.price,
-    c.user_id,
-    c.user_session,
-    i.category_id,
-    i.category_code,
-    i.brand
+-- Step 4: Alter customers table to add new columns from items
+ALTER TABLE customers
+ADD COLUMN IF NOT EXISTS category_id BIGINT,
+ADD COLUMN IF NOT EXISTS category_code VARCHAR(255),
+ADD COLUMN IF NOT EXISTS brand VARCHAR(255);
+
+-- Step 5: Update customers table with data from items
+UPDATE customers c
+SET 
+    category_id = i.category_id,
+    category_code = i.category_code,
+    brand = i.brand
 FROM 
-    customers c
-LEFT JOIN 
-    items i ON c.product_id = i.product_id;
+    items i
+WHERE 
+    c.product_id = i.product_id;
 
 -- Grant permissions
-GRANT ALL PRIVILEGES ON customers_with_items TO jaehwkim;
 GRANT ALL PRIVILEGES ON items TO jaehwkim;
-
-/*
-   psql -U jaehwkim -d piscineds -f ex03/fusion.sql
-*/

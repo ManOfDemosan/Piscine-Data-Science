@@ -1,4 +1,3 @@
--- Create customers table with the same structure as data_2023_feb
 CREATE TABLE IF NOT EXISTS customers (
     event_time TIMESTAMP,
     event_type VARCHAR(255),
@@ -8,10 +7,4 @@ CREATE TABLE IF NOT EXISTS customers (
     user_session VARCHAR(255)
 );
 
--- Insert data from data_2023_feb into customers
-INSERT INTO customers
-SELECT * FROM data_2023_febㅇ;
-
-/*
-   psql -U jaehwkim -d piscineds -f ex01/customers_table.sql
-*/
+TRUNCATE TABLE customers;
