@@ -20,7 +20,7 @@ CSV_CONTAINER_DIR="${CONTAINER_PROJECT_ROOT_MOUNT_PATH}/subject/customer"
 
 
 echo "--- Creating tables (using ${TABLE_SQL_HOST_PATH}) ---"
-PGPASSWORD="$DB_PASSWORD" docker exec "$DB_CONTAINER" psql -U "$DB_USER" -d "$DB_NAME" -f "$TABLE_SQL_CONTAINER_PATH"
+docker exec -i "$DB_CONTAINER" bash -c "PGPASSWORD=\"$DB_PASSWORD\" psql -U \"$DB_USER\" -d \"$DB_NAME\" -f \"$TABLE_SQL_CONTAINER_PATH\""
 echo "Tables created (skipped if already exist)."
 
 
@@ -45,7 +45,7 @@ cat "$TEMP_COPY_SQL_HOST"
 echo "-------------------------------------"
 
 echo "--- Running import commands inside container ---"
-PGPASSWORD="$DB_PASSWORD" docker exec -i "$DB_CONTAINER" psql -U "$DB_USER" -d "$DB_NAME" < "$TEMP_COPY_SQL_HOST"
+docker exec -i "$DB_CONTAINER" bash -c "PGPASSWORD=\"$DB_PASSWORD\" psql -U \"$DB_USER\" -d \"$DB_NAME\"" < "$TEMP_COPY_SQL_HOST"
 
 if [ $? -eq 0 ]; then
   echo "--- All table data imported successfully ---"
@@ -66,7 +66,7 @@ if [ $? -eq 0 ]; then
       done
       VERIFY_SQL+=");"
 
-      PGPASSWORD="$DB_PASSWORD" docker exec -i "$DB_CONTAINER" psql -U "$DB_USER" -d "$DB_NAME" -c "$VERIFY_SQL"
+      docker exec -i "$DB_CONTAINER" bash -c "PGPASSWORD=\"$DB_PASSWORD\" psql -U \"$DB_USER\" -d \"$DB_NAME\" -c \"$VERIFY_SQL\""
   else
       echo "No CSV files found to verify."
   fi
