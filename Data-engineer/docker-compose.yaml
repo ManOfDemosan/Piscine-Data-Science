@@ -8,6 +8,7 @@ services:
       POSTGRES_DB: piscineds
       POSTGRES_USER: jaehwkim
       POSTGRES_PASSWORD: "mysecretpassword"
+      POSTGRES_INITDB_ARGS: "--auth-host=md5 --auth-local=md5"
     ports:
       - "5432:5432"
     volumes:
