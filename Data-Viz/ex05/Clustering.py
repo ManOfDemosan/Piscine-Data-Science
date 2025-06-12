@@ -78,7 +78,6 @@ def get_customer_data():
             df[col] = pd.to_datetime(df[col])
         
         df['recency_days'] = df['recency'].apply(lambda x: int(x.split(' ')[0]) if isinstance(x, str) else 0)
-        
         df['frequency'] = df['purchase_count']
         df['monetary'] = df['total_spent']
         
@@ -91,94 +90,44 @@ def get_customer_data():
         print(f"Unexpected error: {e}")
         return None
 
-def prepare_rfm_data(df):
-    print("Preparing RFM data...")
+def prepare_and_cluster_data(df):
+    print("Preparing RFM data and applying clustering...")
     
-    rfm_df = df[['user_id', 'recency_days', 'frequency', 'monetary']].copy()
+    rfm_features = ['recency_days', 'frequency', 'monetary']
     
     scaler = StandardScaler()
-    rfm_features = ['recency_days', 'frequency', 'monetary']
-    rfm_scaled = scaler.fit_transform(rfm_df[rfm_features])
+    scaled_features = scaler.fit_transform(df[rfm_features])
     
-    for i, feature in enumerate(rfm_features):
-        rfm_df[f'{feature}_scaled'] = rfm_scaled[:, i]
+    kmeans = KMeans(n_clusters=4, random_state=42, n_init=10)
+    df['cluster'] = kmeans.fit_predict(scaled_features)
     
-    return rfm_df, rfm_features
-
-def apply_kmeans_clustering(df, features, n_clusters=4):
-    print(f"Applying KMeans clustering with {n_clusters} clusters...")
-    
-    X = df[[f'{feature}_scaled' for feature in features]].values
-    
-    kmeans = KMeans(n_clusters=n_clusters, random_state=42, n_init=10)
-    df['cluster'] = kmeans.fit_predict(X)
-    
-    cluster_centers = kmeans.cluster_centers_
-    
-    labels = analyze_clusters(df, features, cluster_centers)
-    
-    return df, kmeans, cluster_centers, labels
-
-def analyze_clusters(df, features, centers):
-    n_clusters = centers.shape[0]
-    
-    cluster_stats = df.groupby('cluster')[features].mean()
-    
+    cluster_stats = df.groupby('cluster')[rfm_features].mean()
     loyalty_score = cluster_stats['monetary'] * cluster_stats['frequency'] / (cluster_stats['recency_days'] + 1)
-    
     sorted_clusters = loyalty_score.sort_values(ascending=False).index
     
-    labels = {}
+    labels = {
+        sorted_clusters[0]: 'Gold customers',
+        sorted_clusters[1]: 'Silver customers',
+        sorted_clusters[2]: 'New customers',
+        sorted_clusters[3]: 'Inactive customers'
+    }
     
-    if n_clusters == 4:
-        labels = {
-            sorted_clusters[0]: 'Gold customers',      # 최고 충성도
-            sorted_clusters[1]: 'Silver customers',    # 높은 충성도  
-            sorted_clusters[2]: 'New customers',       # 중간 충성도
-            sorted_clusters[3]: 'Inactive customers'   # 낮은 충성도
-        }
-    elif n_clusters == 5:
-        labels = {
-            sorted_clusters[0]: 'Platinum customers',  # 최고 충성도
-            sorted_clusters[1]: 'Gold customers',      # 매우 높은 충성도
-            sorted_clusters[2]: 'Silver customers',    # 높은 충성도
-            sorted_clusters[3]: 'New customers',       # 중간 충성도
-            sorted_clusters[4]: 'Inactive customers'   # 낮은 충성도
-        }
-    elif n_clusters >= 6:
-        labels = {
-            sorted_clusters[0]: 'Platinum customers',
-            sorted_clusters[1]: 'Gold customers', 
-            sorted_clusters[2]: 'Silver customers',
-            sorted_clusters[3]: 'Regular customers',
-            sorted_clusters[4]: 'New customers',
-            sorted_clusters[5]: 'Inactive customers'
-        }
-        for i in range(6, n_clusters):
-            labels[sorted_clusters[i]] = f'Bronze customers'
-    else:
-        labels = {i: f'Cluster {i+1}' for i in range(n_clusters)}
-    
-    return labels
+    return df, labels
 
-def create_bar_chart(df, labels, output_file='customer_segments_bar.png'):
+def create_bar_chart(df, labels):
     print("Creating customer segments bar chart...")
     
     cluster_counts = df['cluster'].value_counts().sort_index()
-    
     cluster_names = [labels.get(i, f'Cluster {i+1}') for i in cluster_counts.index]
     
     colors = {
-        'Platinum customers': '#FFD700',
         'Gold customers': '#FFA500',
         'Silver customers': '#C0C0C0',
-        'Regular customers': '#87CEEB',
         'New customers': '#98FB98',
-        'Inactive customers': '#F0E68C',
-        'Bronze customers': '#CD7F32'
+        'Inactive customers': '#F0E68C'
     }
     
-    color_list = [colors.get(name, '#CCCCCC') for name in cluster_names]
+    color_list = [colors[name] for name in cluster_names]
     
     plt.figure(figsize=(12, 6))
     ax = plt.subplot(111)
@@ -204,26 +153,22 @@ def create_bar_chart(df, labels, output_file='customer_segments_bar.png'):
     plt.yticks(fontsize=10)
     
     plt.tight_layout()
-    plt.savefig(output_file, dpi=300, bbox_inches='tight')
+    plt.savefig('customer_segments_bar.png', dpi=300, bbox_inches='tight')
     plt.close()
     
-    print(f"Bar chart saved to {output_file}")
+    print("Bar chart saved to customer_segments_bar.png")
 
-def create_bubble_chart(df, features, labels, output_file='customer_segments_bubble.png'):
+def create_bubble_chart(df, labels):
     print("Creating customer segments bubble chart...")
     
     cluster_stats = df.groupby('cluster')[['frequency', 'recency_days', 'monetary']].median()
-    
     cluster_stats['label'] = [labels.get(i, f'Cluster {i+1}') for i in cluster_stats.index]
     
     colors = {
-        'Platinum customers': '#FFD700',
         'Gold customers': '#FFA500',
         'Silver customers': '#C0C0C0',
-        'Regular customers': '#87CEEB',
         'New customers': '#98FB98',
-        'Inactive customers': '#F0E68C',
-        'Bronze customers': '#CD7F32'
+        'Inactive customers': '#F0E68C'
     }
     
     max_monetary = cluster_stats['monetary'].max()
@@ -236,8 +181,7 @@ def create_bubble_chart(df, features, labels, output_file='customer_segments_bub
     
     for i, (idx, row) in enumerate(cluster_stats.iterrows()):
         label = row['label']
-        color = colors.get(label, '#CCCCCC')
-        
+        color = colors[label]
         bubble_size = sizes[idx]
         
         ax.scatter(row['recency_days']/30, row['frequency'], 
@@ -263,10 +207,10 @@ def create_bubble_chart(df, features, labels, output_file='customer_segments_bub
     ax.set_ylim(y_min, y_max)
     
     plt.tight_layout()
-    plt.savefig(output_file, dpi=300, bbox_inches='tight')
+    plt.savefig('customer_segments_bubble.png', dpi=300, bbox_inches='tight')
     plt.close()
     
-    print(f"Bubble chart saved to {output_file}")
+    print("Bubble chart saved to customer_segments_bubble.png")
 
 def main():
     try:
@@ -278,16 +222,12 @@ def main():
             print("Failed to retrieve data. Exiting.")
             return
         
-        rfm_data, rfm_features = prepare_rfm_data(customer_data)
-        
-        clustered_data, kmeans_model, centers, cluster_labels = apply_kmeans_clustering(
-            rfm_data, rfm_features, n_clusters=4)
+        clustered_data, cluster_labels = prepare_and_cluster_data(customer_data)
         
         print("Cluster labels:", cluster_labels)
         
         create_bar_chart(clustered_data, cluster_labels)
-        
-        create_bubble_chart(clustered_data, rfm_features, cluster_labels)
+        create_bubble_chart(clustered_data, cluster_labels)
         
         print("All visualization tasks completed successfully.")
     
