@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 import psycopg2
 import matplotlib.pyplot as plt
-import pandas as pd
-import numpy as np
+
 
 DB_NAME = "piscineds"
 DB_USER = "jaehwkim"
@@ -66,46 +65,32 @@ def create_pie_chart(data):
     total = sum(counts)
     percentages = [count/total*100 for count in counts]
     
-    colors = ['#7eb6d9', '#5eb57e', '#f8c471', '#9b59b6']
+    # 사진과 같은 색상으로 변경: 파란색, 주황색, 초록색, 빨간색
+    colors = ['#4472C4', '#E6763A', '#70AD47', '#C5504B']
     
     fig, ax = plt.subplots(figsize=(10, 8), facecolor='white')
     
+    # make labels with percentages
+    labels_with_percent = [f"{event_type}\n{percentage:.1f}%" for event_type, percentage in zip(event_types, percentages)]
+    
     wedges, texts = ax.pie(
         counts,
-        labels=event_types,
+        labels=labels_with_percent,
         colors=colors,
         startangle=90,
-        wedgeprops={'edgecolor': 'white', 'linewidth': 1},
+        wedgeprops={'edgecolor': 'white', 'linewidth': 2},
         textprops={'fontsize': 12, 'color': 'black', 'weight': 'bold'},
-        labeldistance=0.65
+        labeldistance=1.1,  # move labels outside the pie chart
+        pctdistance=0.85    # show percentages
     )
     
-    for i, p in enumerate(wedges):
-        ang = (p.theta2 - p.theta1)/2. + p.theta1
-        x = 0.5 * np.cos(np.deg2rad(ang))
-        y = 0.5 * np.sin(np.deg2rad(ang))
-        ax.text(x, y, f"{percentages[i]:.1f}%", 
-                ha='center', va='center', fontsize=12, 
-                color='white', weight='bold')
-    
-    plt.title('Distribution of User Activity Types on the Site', fontsize=18, pad=20)
-    
-    legend_labels = [f"{event_type}\n{percentage:.1f}%" for event_type, percentage in zip(event_types, percentages)]
-    plt.legend(
-        wedges, 
-        legend_labels,
-        title="Event Types",
-        loc="center left",
-        bbox_to_anchor=(1.0, 0.5),
-        fontsize=12,
-        frameon=True
-    )
+    plt.title('Distribution of User Activity Types on the Site', fontsize=18, pad=20, weight='bold')
     
     ax.axis('equal')
     
     plt.tight_layout()
     
-    plt.savefig('pie.png', dpi=300, bbox_inches='tight')
+    plt.savefig('pie.png', dpi=300, bbox_inches='tight', facecolor='white')
     print("Pie chart saved as 'pie.png'")
     
     plt.show()
