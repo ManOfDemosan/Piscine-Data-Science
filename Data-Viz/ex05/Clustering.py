@@ -21,6 +21,7 @@ plt.rcParams['grid.alpha'] = 0.3
 DB_NAME = "piscineds"
 DB_USER = "jaehwkim"
 DB_PASSWORD = "mysecretpassword"
+CLUSTER_COUNT = 4
 
 def get_customer_data():
     try:
@@ -95,10 +96,10 @@ def prepare_and_cluster_data(df):
     
     rfm_features = ['recency_days', 'frequency', 'monetary']
     
-    scaler = StandardScaler()
+    scaler = StandardScaler() # data normalization
     scaled_features = scaler.fit_transform(df[rfm_features])
     
-    kmeans = KMeans(n_clusters=4, random_state=42, n_init=10)
+    kmeans = KMeans(n_clusters= CLUSTER_COUNT , random_state=42, n_init=10) # k-means clustering
     df['cluster'] = kmeans.fit_predict(scaled_features)
     
     cluster_stats = df.groupby('cluster')[rfm_features].mean()
